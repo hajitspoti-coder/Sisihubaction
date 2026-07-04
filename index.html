@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SisiHub</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/jetbrains-mono/2.304/jetbrains-mono.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --void:#0b0d14;
+  --surface:#12151f;
+  --surface-2:#191d2b;
+  --line:#242a3d;
+  --violet:#8b5cf6;
+  --violet-dim:#5b3fa8;
+  --cyan:#22d3ee;
+  --amber:#fbbf24;
+  --text:#eef0f5;
+  --muted:#8890a8;
+  --danger:#f0556b;
+  --success:#34d399;
+  --bg-image: none; /* وقتی عکس بکگراند رو فرستادی اینجا جایگزین میشه */
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Vazirmatn',sans-serif;
+  background:
+    var(--bg-image),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139,92,246,0.16), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 5%, rgba(34,211,238,0.08), transparent),
+    var(--void);
+  background-size:cover;
+  background-attachment:fixed;
+  background-position:center;
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:74px; /* space for bottom tab bar on mobile */
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page-enter{animation:fadeUp .28s ease both;}
+
+/* ---- Header ---- */
+header{
+  position:sticky;top:0;z-index:20;
+  background:rgba(11,13,20,0.82);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+  padding:14px 20px;
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;max-width:1000px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:10px;}
+.logo{width:32px;height:32px;animation:float 5s ease-in-out infinite;}
+.brand-name{font-weight:800;font-size:19px;letter-spacing:.3px;
+  background:linear-gradient(90deg,#fff,var(--violet) 75%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+.avatar-mini{width:28px;height:28px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:14px;border:1px solid var(--line);flex-shrink:0;}
+.logout-btn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;}
+.logout-btn:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ---- desktop side nav / mobile bottom tab bar ---- */
+nav.tabbar{
+  position:fixed;bottom:0;right:0;left:0;z-index:20;
+  background:rgba(11,13,20,0.92);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+  display:flex;justify-content:space-around;padding:6px 4px;
+}
+.tab{
+  flex:1;max-width:90px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;color:var(--muted);padding:8px 4px;border-radius:10px;
+  font-family:inherit;font-size:10.5px;cursor:pointer;transition:.15s;
+}
+.tab .ic{font-size:18px;line-height:1;}
+.tab.active{color:var(--text);background:var(--surface-2);}
+.tab.active .ic{transform:translateY(-1px);}
+
+main{max-width:900px;margin:0 auto;padding:20px 16px 30px;position:relative;z-index:1;}
+.page-head{margin-bottom:18px;}
+.page-head h1{font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px;}
+.page-head p{color:var(--muted);font-size:13px;margin-top:4px;}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px;}
+.card h2{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:700;}
+.card h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);box-shadow:0 0 10px var(--violet);flex-shrink:0;}
+label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+input,textarea,select{
+  width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+  border-radius:10px;padding:11px 13px;font-family:inherit;font-size:14px;margin-bottom:12px;outline:none;
+  transition:.15s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.15);}
+textarea{resize:vertical;min-height:70px;}
+.btn{
+  background:linear-gradient(135deg,var(--violet),#6d28d9);color:#fff;border:none;
+  border-radius:10px;padding:11px 18px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;
+  transition:.15s;
+}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px);}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+.btn.danger{background:linear-gradient(135deg,var(--danger),#b91c3c);}
+.btn.sm{padding:6px 12px;font-size:12.5px;border-radius:8px;}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+.mono{font-family:'JetBrains Mono',monospace;}
+.muted{color:var(--muted);font-size:13px;}
+.badge{display:inline-block;background:var(--surface-2);border:1px solid var(--line);color:var(--cyan);
+  font-size:11px;padding:3px 9px;border-radius:20px;font-family:'JetBrains Mono',monospace;}
+.badge.admin{color:var(--amber);border-color:rgba(251,191,36,.3);}
+hr{border:none;border-top:1px solid var(--line);margin:14px 0;}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:13.5px;}
+.loading{text-align:center;color:var(--muted);padding:40px 10px;font-size:13.5px;}
+
+/* auth */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;z-index:1;}
+.auth-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:34px 26px;text-align:center;}
+.auth-logo{width:60px;height:60px;margin:0 auto 14px;animation:float 5s ease-in-out infinite;}
+.auth-toggle{display:flex;background:var(--surface-2);border-radius:10px;padding:4px;margin-bottom:18px;}
+.auth-toggle button{flex:1;background:none;border:none;color:var(--muted);padding:8px;border-radius:8px;font-family:inherit;cursor:pointer;font-size:13px;}
+.auth-toggle button.active{background:var(--violet);color:#fff;}
+.err{color:var(--danger);font-size:12.5px;margin-bottom:10px;min-height:16px;}
+
+/* profile cards */
+.player-card{display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);margin-bottom:10px;}
+.avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--violet-dim),var(--surface-2));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:1px solid var(--line);}
+.player-meta{flex:1;min-width:0;}
+.player-name{font-weight:700;font-size:14.5px;}
+.player-sub{color:var(--muted);font-size:12px;margin-top:2px;}
+
+.gamers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;}
+.gamer-tile{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:16px 10px;text-align:center;}
+.gamer-tile .avatar{margin:0 auto 8px;width:52px;height:52px;font-size:24px;}
+
+/* chat */
+.chat-box{max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding-left:2px;}
+.msg{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;max-width:85%;}
+.msg .who{font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:3px;}
+.msg .reply-ref{font-size:11px;color:var(--muted);border-right:2px solid var(--violet);padding-right:8px;margin-bottom:5px;}
+.msg .body{font-size:14px;line-height:1.6;}
+.msg .time{font-size:10px;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;}
+.reply-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border-right:2px solid var(--violet);padding:8px 10px;border-radius:8px;font-size:12.5px;margin-bottom:8px;}
+
+/* poll */
+.poll-yes-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.poll-chip{display:flex;align-items:center;gap:6px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--success);padding:5px 10px;border-radius:20px;font-size:12.5px;}
+
+.table-row{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.table-row:last-child{border-bottom:none;}
+.spacer{flex:1;}
+
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--violet);
+  color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;z-index:100;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+/* config warning banner */
+.config-warn{background:rgba(240,85,107,.12);border:1px solid rgba(240,85,107,.4);color:#ffb3bf;border-radius:14px;padding:16px;margin:16px;font-size:13.5px;line-height:1.8;}
+
+/* ---- Light theme ---- */
+body.theme-light{
+  --void:#f3f4fa;
+  --surface:#ffffff;
+  --surface-2:#f1f2f9;
+  --line:#e3e5f0;
+  --text:#171826;
+  --muted:#6b7086;
+}
+body.theme-light .config-warn{color:#b91c3c;}
+body.theme-light .brand-name{background:linear-gradient(90deg,#171826,var(--violet) 75%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+.theme-toggle{
+  background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+  width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:15px;flex-shrink:0;
+}
+
+/* ---- More menu overlay ---- */
+.menu-overlay{
+  position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.5);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.menu-sheet{
+  width:100%;max-width:480px;background:var(--surface);border:1px solid var(--line);
+  border-radius:20px 20px 0 0;padding:10px 10px 24px;animation:fadeUp .2s ease both;
+}
+.menu-sheet .handle{width:36px;height:4px;background:var(--line);border-radius:3px;margin:8px auto 14px;}
+.menu-item{
+  display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;color:var(--text);
+  padding:14px 16px;border-radius:12px;font-family:inherit;font-size:15px;cursor:pointer;text-align:right;
+}
+.menu-item:active{background:var(--surface-2);}
+.menu-item .ic{font-size:19px;}
+.menu-item.danger{color:var(--danger);}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== CONFIG — این دو خط رو با مقادیر Supabase خودت پر کن ===================== */
+const SUPABASE_URL = "https://knraccnuskwrrvxohzmz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_46nqRIwouDJMnvdjGTP8Aw_3t8W_8o1";
+/* ================================================================================================ */
+
+const CONFIGURED = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;
+const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* ===================== Theme (dark/light) ===================== */
+function getSavedTheme(){
+  try{ return localStorage.getItem('sisihub_theme') || 'dark'; }catch(e){ return 'dark'; }
+}
+function applyTheme(theme){
+  document.body.classList.toggle('theme-light', theme==='light');
+}
+function toggleTheme(){
+  const current = document.body.classList.contains('theme-light') ? 'light' : 'dark';
+  const next = current==='light' ? 'dark' : 'light';
+  applyTheme(next);
+  try{ localStorage.setItem('sisihub_theme', next); }catch(e){}
+}
+
+const LOGO_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<path d="M62 8c2 10-3 16-10 20 12-3 30 2 34 24 4 24-13 42-35 42-22 0-38-16-36-38C17 34 30 22 44 16c-3 5-2 9 1 11 3-8 9-14 17-19z" fill="url(#g)"/>
+<path d="M32 58c4-3 9-4 12 0 2 3 0 7-4 7-5 0-11-3-8-7z" fill="#0a0a11"/>
+<path d="M56 58c4-3 10-4 13 0 2 3 0 7-5 7-5 0-11-3-8-7z" fill="#0a0a11"/>
+<defs><linearGradient id="g" x1="0" y1="0" x2="100" y2="100"><stop offset="0" stop-color="#f4f0ff"/><stop offset="1" stop-color="#c9b8ff"/></linearGradient></defs>
+</svg>`;
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ===================== Jalali date ===================== */
+function toJalali(gy,gm,gd){
+  const g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
+  gy=gm>2?gy+1:gy; let days=355666+(365*gy)+Math.floor((gy+3)/4)-Math.floor((gy+99)/100)+Math.floor((gy+399)/400)+gd+g_d_m[gm-1];
+  let jy=-1595+(33*Math.floor(days/12053)); days%=12053;
+  jy+=4*Math.floor(days/1461); days%=1461;
+  if(days>365){ jy+=Math.floor((days-1)/365); days=(days-1)%365; }
+  let jm, jd;
+  if(days<186){ jm=1+Math.floor(days/31); jd=1+(days%31); }
+  else{ jm=7+Math.floor((days-186)/30); jd=1+((days-186)%30); }
+  return [jy,jm,jd];
+}
+function jalaliToday(){
+  const d=new Date();
+  const [jy,jm,jd]=toJalali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  const months=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+  return `${jd} ${months[jm-1]} ${jy}`;
+}
+function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+/* ===================== Data layer (Supabase) ===================== */
+const api = {
+  async getUsers(){
+    const {data:users} = await sb.from('users').select('*').order('created_at');
+    const {data:ug} = await sb.from('user_games').select('*');
+    return (users||[]).map(u=>({...u, games:(ug||[]).filter(g=>g.username===u.username)}));
+  },
+  async findUser(username){
+    const {data} = await sb.from('users').select('*').eq('username', username).maybeSingle();
+    return data;
+  },
+  async createUser(u){ const {error}=await sb.from('users').insert(u); return !error; },
+  async updateUser(username, fields){ await sb.from('users').update(fields).eq('username', username); },
+  async deleteUser(username){ await sb.from('users').delete().eq('username', username); },
+
+  async addUserGame(username, game, inGameId){
+    await sb.from('user_games').delete().eq('username', username).eq('game', game);
+    await sb.from('user_games').insert({username, game, in_game_id: inGameId});
+  },
+  async removeUserGame(id){ await sb.from('user_games').delete().eq('id', id); },
+
+  async getGames(){ const {data} = await sb.from('games').select('*').order('id'); return data||[]; },
+  async addGame(name){ const {error}=await sb.from('games').insert({name}); return !error; },
+  async deleteGame(id){ await sb.from('games').delete().eq('id', id); },
+
+  async getTodayAnnouncement(){
+    const {data} = await sb.from('announcements').select('*').eq('date', todayKey()).maybeSingle();
+    return data;
+  },
+  async publishAnnouncement(question){
+    const existing = await api.getTodayAnnouncement();
+    if(existing){ await sb.from('announcements').update({question}).eq('date', todayKey()); }
+    else{ await sb.from('announcements').insert({date:todayKey(), question, responses:{}}); }
+  },
+  async vote(username, val){
+    const existing = await api.getTodayAnnouncement();
+    if(!existing) return;
+    const responses = {...(existing.responses||{}), [username]: val};
+    await sb.from('announcements').update({responses}).eq('date', todayKey());
+  },
+  async deleteAnnouncement(){ await sb.from('announcements').delete().eq('date', todayKey()); },
+
+  async getChat(){ const {data} = await sb.from('chat_messages').select('*').order('created_at').limit(200); return data||[]; },
+  async sendChat(username, text, replyTo){ await sb.from('chat_messages').insert({username, text, reply_to: replyTo}); },
+
+  async getMeetLink(){ const {data} = await sb.from('settings').select('*').eq('key','meet_link').maybeSingle(); return data?.value||''; },
+  async setMeetLink(link){ await sb.from('settings').update({value:link}).eq('key','meet_link'); }
+};
+
+/* ===================== avatar rendering ===================== */
+function avatarHTML(u, extraStyle=''){
+  const a = u && u.avatar;
+  if(a && a.startsWith('data:image')){
+    return `<div class="avatar" style="background-image:url('${a}');background-size:cover;background-position:center;font-size:0;${extraStyle}"></div>`;
+  }
+  return `<div class="avatar" style="${extraStyle}">${a||'🎮'}</div>`;
+}
+function readAndResizeImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const size=200;
+        const canvas=document.createElement('canvas');
+        canvas.width=size; canvas.height=size;
+        const ctx=canvas.getContext('2d');
+        const minSide=Math.min(img.width,img.height);
+        const sx=(img.width-minSide)/2, sy=(img.height-minSide)/2;
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===================== State ===================== */
+let state = { session:null, users:[], announcement:null, games:[], chat:[], meetLink:'', tab:'home', replyTarget:null, loaded:false, moreMenuOpen:false };
+
+async function loadAll(){
+  state.users = await api.getUsers();
+  state.announcement = await api.getTodayAnnouncement();
+  state.games = await api.getGames();
+  state.chat = await api.getChat();
+  state.meetLink = await api.getMeetLink();
+  const sess = sessionStorage.getItem('sisihub_session'); // فقط برای بین رفرش‌های همین دستگاه
+  if(sess){
+    const u = state.users.find(x=>x.username===sess);
+    state.session = u ? sess : null;
+  }
+  state.loaded = true;
+}
+function me(){ return state.users.find(u=>u.username===state.session); }
+function isAdmin(){ const m=me(); return m && m.is_admin; }
+
+/* ===================== Render root ===================== */
+async function render(){
+  const app=document.getElementById('app');
+  if(!CONFIGURED){
+    app.innerHTML = `
+      <div class="auth-wrap"><div class="auth-card">
+        <div class="auth-logo">${LOGO_SVG}</div>
+        <div class="brand-name" style="font-size:24px;margin-bottom:14px;">SisiHub</div>
+        <div class="config-warn" style="margin:0;text-align:right;">
+          هنوز به دیتابیس وصل نشدی. آدرس <b>SUPABASE_URL</b> و <b>SUPABASE_ANON_KEY</b> رو بالای کد (بخش CONFIG) جایگزین کن، بعد صفحه رو رفرش کن.
+        </div>
+      </div></div>`;
+    return;
+  }
+  if(!state.loaded){ app.innerHTML = `<div class="loading">در حال بارگذاری SisiHub...</div>`; return; }
+  if(!state.session){ app.innerHTML = renderAuth(); bindAuth(); return; }
+  app.innerHTML = renderShell();
+  bindShell();
+}
+
+/* ===================== AUTH ===================== */
+function renderAuth(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">${LOGO_SVG}</div>
+      <div class="brand-name" style="font-size:26px;margin-bottom:4px;">SisiHub</div>
+      <div class="muted" style="margin-bottom:20px;">جایی برای پلی گرفتن با رفقا</div>
+      <div class="auth-toggle">
+        <button id="tabLogin" class="active">ورود</button>
+        <button id="tabRegister">ثبت‌نام</button>
+      </div>
+      <div id="authForm"></div>
+      <div class="err" id="authErr"></div>
+    </div>
+  </div>`;
+}
+function bindAuth(){
+  let mode='login';
+  const formEl=document.getElementById('authForm');
+  const errEl=document.getElementById('authErr');
+  function draw(){
+    errEl.textContent='';
+    if(mode==='login'){
+      formEl.innerHTML=`
+        <input id="lu" placeholder="نام کاربری" autocomplete="username">
+        <input id="lp" type="password" placeholder="رمز عبور" autocomplete="current-password">
+        <button class="btn" id="doLogin" style="width:100%;margin-top:4px;">ورود</button>`;
+      document.getElementById('doLogin').onclick=async ()=>{
+        const u=document.getElementById('lu').value.trim();
+        const p=document.getElementById('lp').value;
+        const found=await api.findUser(u);
+        if(!found || found.password!==p){ errEl.textContent='نام کاربری یا رمز اشتباهه'; return; }
+        state.session=u; sessionStorage.setItem('sisihub_session', u);
+        toast(`خوش اومدی ${u} 👋`);
+        await loadAll(); render();
+      };
+    } else {
+      formEl.innerHTML=`
+        <input id="ru" placeholder="نام کاربری (آیدی)" autocomplete="username">
+        <input id="rp" type="password" placeholder="رمز عبور" autocomplete="new-password">
+        <button class="btn" id="doReg" style="width:100%;margin-top:4px;">ساخت حساب</button>`;
+      document.getElementById('doReg').onclick=async ()=>{
+        const u=document.getElementById('ru').value.trim();
+        const p=document.getElementById('rp').value;
+        if(!u || !p){ errEl.textContent='نام کاربری و رمز رو کامل بنویس'; return; }
+        const exists = await api.findUser(u);
+        if(exists){ errEl.textContent='این نام کاربری قبلاً گرفته شده'; return; }
+        const ok = await api.createUser({ username:u, password:p, bio:'', phone:'', age:'', avatar:'🎮', is_admin:false });
+        if(!ok){ errEl.textContent='مشکلی پیش اومد، دوباره امتحان کن'; return; }
+        state.session=u; sessionStorage.setItem('sisihub_session', u);
+        toast('ثبت‌نام انجام شد 🎉');
+        await loadAll(); render();
+      };
+    }
+  }
+  document.getElementById('tabLogin').onclick=()=>{mode='login';document.getElementById('tabLogin').classList.add('active');document.getElementById('tabRegister').classList.remove('active');draw();};
+  document.getElementById('tabRegister').onclick=()=>{mode='register';document.getElementById('tabRegister').classList.add('active');document.getElementById('tabLogin').classList.remove('active');draw();};
+  draw();
+}
+
+/* ===================== SHELL ===================== */
+function renderShell(){
+  const m=me();
+  const mainTabs=[ ['home','🏠','خانه'],['announce','📣','اطلاعیه'],['chat','💬','چت'],['gamers','👥','گیمرها'] ];
+  const menuTabs=[
+    ['profile','🙍','پروفایل'],
+    ['games','🎮','بازی‌ها'],
+    ...(isAdmin()?[['admin','🛠️','پنل مدیریت']]:[])
+  ];
+  const secondaryActive = menuTabs.some(([id])=>id===state.tab);
+  return `
+  <header>
+    <div class="header-top">
+      <div class="brand">
+        <div class="logo">${LOGO_SVG}</div>
+        <div class="brand-name">SisiHub</div>
+      </div>
+      <div class="user-chip">
+        <button class="theme-toggle" id="themeToggleBtn">${document.body.classList.contains('theme-light')?'🌙':'☀️'}</button>
+        ${avatarHTML(m,'width:28px;height:28px;font-size:14px;')}
+        <span>${m.username}</span>
+        ${m.is_admin?'<span class="badge admin">ادمین</span>':''}
+        <button class="logout-btn" id="logoutBtn">خروج</button>
+      </div>
+    </div>
+  </header>
+  <main id="mainArea" class="page-enter">${renderTab()}</main>
+  <nav class="tabbar">
+    ${mainTabs.map(([id,ic,label])=>`<button class="tab ${state.tab===id?'active':''}" data-tab="${id}"><span class="ic">${ic}</span>${label}</button>`).join('')}
+    <button class="tab ${secondaryActive?'active':''}" id="moreMenuBtn"><span class="ic">☰</span>منو</button>
+  </nav>
+  ${state.moreMenuOpen ? `
+  <div class="menu-overlay" id="menuOverlay">
+    <div class="menu-sheet">
+      <div class="handle"></div>
+      ${menuTabs.map(([id,ic,label])=>`<button class="menu-item ${state.tab===id?'active':''}" data-menutab="${id}"><span class="ic">${ic}</span>${label}</button>`).join('')}
+      <button class="menu-item danger" id="menuLogout"><span class="ic">🚪</span>خروج از حساب</button>
+    </div>
+  </div>` : ''}
+  `;
+}
+
+function renderTab(){
+  switch(state.tab){
+    case 'home': return renderHome();
+    case 'profile': return renderProfile();
+    case 'admin': return isAdmin()? renderAdmin() : renderHome();
+    case 'announce': return renderAnnounce();
+    case 'chat': return renderChat();
+    case 'games': return renderGames();
+    case 'gamers': return renderGamers();
+    default: return renderHome();
+  }
+}
+
+function bindShell(){
+  document.getElementById('logoutBtn').onclick=()=>{
+    state.session=null; sessionStorage.removeItem('sisihub_session'); render();
+  };
+  document.getElementById('themeToggleBtn').onclick=()=>{ toggleTheme(); render(); };
+  document.querySelectorAll('.tab[data-tab]').forEach(b=>{
+    b.onclick=async ()=>{ state.tab=b.dataset.tab; state.replyTarget=null; state.moreMenuOpen=false; await refreshTabData(); render(); };
+  });
+  const moreBtn=document.getElementById('moreMenuBtn');
+  if(moreBtn) moreBtn.onclick=()=>{ state.moreMenuOpen=true; render(); };
+  const overlay=document.getElementById('menuOverlay');
+  if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target.id==='menuOverlay'){ state.moreMenuOpen=false; render(); } });
+  document.querySelectorAll('[data-menutab]').forEach(b=>{
+    b.onclick=async ()=>{ state.tab=b.dataset.menutab; state.moreMenuOpen=false; await refreshTabData(); render(); };
+  });
+  const menuLogout=document.getElementById('menuLogout');
+  if(menuLogout) menuLogout.onclick=()=>{ state.session=null; sessionStorage.removeItem('sisihub_session'); render(); };
+  bindTabEvents();
+}
+
+async function refreshTabData(){
+  if(state.tab==='home' || state.tab==='announce'){ state.announcement=await api.getTodayAnnouncement(); state.meetLink=await api.getMeetLink(); }
+  if(state.tab==='home' || state.tab==='chat'){ state.chat=await api.getChat(); }
+  if(state.tab==='home' || state.tab==='gamers' || state.tab==='games' || state.tab==='admin' || state.tab==='profile'){ state.users=await api.getUsers(); state.games=await api.getGames(); }
+}
+
+/* ===================== HOME ===================== */
+function normalizeLink(link){
+  if(!link) return link;
+  return /^https?:\/\//i.test(link) ? link : 'https://' + link;
+}
+
+function renderHome(){
+  const ann = state.announcement;
+  const yesCount = ann ? Object.values(ann.responses||{}).filter(v=>v==='yes').length : 0;
+  const recentChat = state.chat.slice(-3);
+  const previewGamers = state.users.slice(0,8);
+  return `
+    <div class="page-head">
+      <h1>👋 خوش اومدی</h1>
+      <p>${jalaliToday()} — همینجا ببین امشب کیا پایه‌ن</p>
+    </div>
+
+    ${ state.meetLink ? `
+    <div class="card" style="border-color:rgba(139,92,246,.5);">
+      <h2><span class="dot" style="background:var(--cyan);box-shadow:0 0 10px var(--cyan);"></span> وقتشه! جوین شید 🎥</h2>
+      <p class="muted" style="margin-bottom:12px;">نظرسنجی امشب تموم شد، بریم برای بازی.</p>
+      <div class="row" style="margin-bottom:10px;">
+        <a href="${escapeAttr(normalizeLink(state.meetLink))}" target="_blank" class="btn" style="text-decoration:none;display:inline-block;">ورود به Google Meet</a>
+        <button class="btn ghost" id="copyMeetBtn">📋 کپی لینک</button>
+      </div>
+      <div class="mono" style="font-size:12.5px;color:var(--muted);user-select:all;word-break:break-all;padding:8px 10px;background:var(--surface-2);border-radius:8px;">${escapeHtml(normalizeLink(state.meetLink))}</div>
+      <p class="muted" style="margin-top:8px;font-size:11.5px;">اگه دکمه بالا کار نکرد، همین لینک زیرو نگه‌دار و کپی کن، بعد توی مرورگر پیستش کن.</p>
+    </div>` : '' }
+
+    <div class="card">
+      <h2><span class="dot"></span> امشب چطوره؟</h2>
+      ${ann ? `
+        <div style="font-size:15px;margin-bottom:10px;">${escapeHtml(ann.question)}</div>
+        <span class="badge">${yesCount} نفر هستن</span>
+      `: `<div class="empty">هنوز اطلاعیه‌ای برای امشب ثبت نشده.</div>`}
+      <div style="margin-top:12px;"><button class="btn ghost sm" data-tab="announce">رفتن به نظرسنجی ←</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span> آخرین پیام‌های چت</h2>
+      ${recentChat.length? recentChat.map(msg=>`
+        <div class="player-card" style="align-items:flex-start;">
+          <div class="avatar" style="width:32px;height:32px;font-size:14px;">💬</div>
+          <div class="player-meta">
+            <div class="player-name" style="font-size:13px;">${escapeHtml(msg.username)}</div>
+            <div class="player-sub" style="font-size:12.5px;">${escapeHtml(msg.text.slice(0,60))}</div>
+          </div>
+        </div>`).join('') : `<div class="empty">هنوز پیامی نیست.</div>`}
+      <div style="margin-top:8px;"><button class="btn ghost sm" data-tab="chat">رفتن به چت گروهی ←</button></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span> گیمرها</h2>
+      <div class="gamers-grid">
+        ${previewGamers.map(u=>`
+          <div class="gamer-tile">
+            ${avatarHTML(u)}
+            <div class="player-name" style="font-size:13px;">${escapeHtml(u.username)}</div>
+          </div>`).join('') || `<div class="empty">هنوز کسی نیست.</div>`}
+      </div>
+      <div style="margin-top:12px;"><button class="btn ghost sm" data-tab="gamers">دیدن همه گیمرها ←</button></div>
+    </div>
+  `;
+}
+
+/* ===================== PROFILE ===================== */
+function renderProfile(){
+  const m=me();
+  const gamesRows = m.games.map(g=>`
+    <div class="player-card">
+      <div class="avatar">🕹️</div>
+      <div class="player-meta">
+        <div class="player-name">${escapeHtml(g.game)}</div>
+        <div class="player-sub mono">ID: ${escapeHtml(g.in_game_id)}</div>
+      </div>
+      <button class="btn danger sm" data-rmgame="${g.id}">حذف</button>
+    </div>`).join('') || `<div class="empty">هنوز بازی‌ای اضافه نکردی.</div>`;
+
+  const gameOptions = state.games.map(g=>`<option value="${escapeAttr(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+
+  return `
+  <div class="page-head"><h1>🙍 پروفایل من</h1><p>مشخصات و بازی‌هات رو اینجا مدیریت کن</p></div>
+  <div class="card">
+    <div class="row" style="align-items:center;margin-bottom:16px;">
+      ${avatarHTML(m,'width:60px;height:60px;font-size:28px;')}
+      <div>
+        <div class="player-name" style="font-size:17px;">${m.username}</div>
+        <div class="muted">آیدی پروفایل شما همین نام کاربریه</div>
+      </div>
+    </div>
+    <label>عکس پروفایل</label>
+    <div class="row" style="align-items:center;margin-bottom:12px;">
+      <label for="pfPhotoInput" class="btn ghost sm" style="cursor:pointer;">📷 انتخاب عکس از گالری</label>
+      <input type="file" id="pfPhotoInput" accept="image/*" style="display:none;">
+      <span class="muted" style="font-size:12px;">${m.avatar&&m.avatar.startsWith('data:image')?'عکس فعلی ثبت شده ✅':'یا از ایموجی زیر استفاده کن'}</span>
+      ${m.avatar&&m.avatar.startsWith('data:image')?'<button class="btn danger sm" id="removePhotoBtn">حذف عکس</button>':''}
+    </div>
+    <label>ایموجی آواتار (اگه عکس نذاری)</label>
+    <input id="pfAvatar" maxlength="2" value="${m.avatar&&m.avatar.startsWith('data:image')?'🎮':escapeAttr(m.avatar||'🎮')}" placeholder="🎮">
+    <div class="grid2">
+      <div><label>سن</label><input id="pfAge" type="number" value="${escapeAttr(m.age||'')}"></div>
+      <div><label>شماره تماس</label><input id="pfPhone" value="${escapeAttr(m.phone||'')}" placeholder="09xxxxxxxxx"></div>
+    </div>
+    <label>بیو</label>
+    <textarea id="pfBio" placeholder="چند خط درباره خودت...">${escapeHtml(m.bio||'')}</textarea>
+    <button class="btn" id="saveProfile">ذخیره تغییرات</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> بازی‌های من</h2>
+    ${gamesRows}
+    <hr>
+    <div class="grid2">
+      <div><label>انتخاب بازی</label><select id="pfGameSelect">${gameOptions}</select></div>
+      <div><label>آیدی داخل بازی</label><input id="pfGameId" placeholder="مثلاً YourTag#1234"></div>
+    </div>
+    <button class="btn ghost" id="addGameBtn">+ اضافه کردن بازی</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> تغییر رمز عبور</h2>
+    <input id="pfNewPass" type="password" placeholder="رمز جدید">
+    <button class="btn ghost" id="changePassBtn">تغییر رمز</button>
+  </div>
+  `;
+}
+
+/* ===================== ADMIN ===================== */
+function renderAdmin(){
+  const rows = state.users.map(u=>`
+    <div class="table-row">
+      ${avatarHTML(u)}
+      <div>
+        <div class="player-name">${u.username} ${u.is_admin?'<span class="badge admin">ادمین</span>':''}</div>
+        <div class="player-sub">${u.age?('سن '+escapeHtml(u.age)):''} ${u.phone?(' · '+escapeHtml(u.phone)):''}</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" data-resetpw="${u.username}">ریست رمز</button>
+      ${!u.is_admin? `<button class="btn danger sm" data-deluser="${u.username}">حذف</button>`:''}
+    </div>`).join('');
+
+  const gameRows = state.games.map(g=>`
+    <div class="table-row"><div class="player-name">${escapeHtml(g.name)}</div><div class="spacer"></div>
+      <button class="btn danger sm" data-delgame="${g.id}">حذف</button></div>`).join('');
+
+  return `
+  <div class="page-head"><h1>🛠️ پنل مدیریت</h1><p>مدیریت کاربرها، اطلاعیه، بازی‌ها و لینک میت</p></div>
+  <div class="card">
+    <h2><span class="dot"></span> مدیریت کاربران</h2>
+    ${rows || '<div class="empty">کاربری نیست</div>'}
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> اطلاعیه امشب</h2>
+    <label>متن نظرسنجی</label>
+    <textarea id="admAnnText" placeholder="امشب پلی هستین؟ 🎮">${escapeHtml(state.announcement?.question||'امشب پلی هستین؟ 🎮')}</textarea>
+    <div class="row">
+      <button class="btn" id="publishAnn">انتشار / بروزرسانی اطلاعیه</button>
+      ${state.announcement? `<button class="btn danger" id="deleteAnn">پاک کردن اطلاعیه امشب</button>`:''}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> لینک Google Meet</h2>
+    <input id="admMeet" value="${escapeAttr(state.meetLink||'')}" placeholder="https://meet.google.com/xxx-xxxx-xxx">
+    <button class="btn ghost" id="saveMeet">ذخیره لینک</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> لیست بازی‌ها</h2>
+    ${gameRows}
+    <hr>
+    <div class="row">
+      <input id="newGameName" placeholder="نام بازی جدید" style="flex:1;">
+      <button class="btn ghost" id="addGameAdmin">+ اضافه</button>
+    </div>
+  </div>
+  `;
+}
+
+/* ===================== ANNOUNCEMENT ===================== */
+function renderAnnounce(){
+  const ann = state.announcement;
+  const m = me();
+  if(!ann){
+    return `<div class="page-head"><h1>📣 اطلاعیه</h1></div><div class="card"><div class="empty">هنوز اطلاعیه‌ای منتشر نشده. ادمین می‌تونه از پنل مدیریت اضافه کنه.</div></div>`;
+  }
+  const myResp = ann.responses?.[m.username];
+  const yesUsers = Object.entries(ann.responses||{}).filter(([k,v])=>v==='yes').map(([k])=>k);
+  return `
+  <div class="page-head"><h1>📣 نظرسنجی شب</h1><p>${jalaliToday()}</p></div>
+  <div class="card">
+    <div style="font-size:16px;margin-bottom:16px;">${escapeHtml(ann.question)}</div>
+    <div class="row">
+      <button class="btn" id="voteYes" style="${myResp==='yes'?'box-shadow:0 0 0 2px var(--success);':''}">✅ هستم</button>
+      <button class="btn ghost" id="voteNo" style="${myResp==='no'?'box-shadow:0 0 0 2px var(--danger);':''}">❌ نیستم</button>
+    </div>
+    <hr>
+    <div class="muted" style="margin-bottom:6px;">کسایی که هستن (${yesUsers.length} نفر):</div>
+    <div class="poll-yes-list">
+      ${yesUsers.map(u=>`<div class="poll-chip">🟢 ${escapeHtml(u)}</div>`).join('') || '<span class="muted">هنوز کسی رأی نداده</span>'}
+    </div>
+  </div>`;
+}
+
+/* ===================== CHAT ===================== */
+function renderChat(){
+  const msgs = state.chat.map(msg=>{
+    const replyMsg = msg.reply_to!=null ? state.chat.find(x=>x.id===msg.reply_to) : null;
+    const t = new Date(msg.created_at).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+    return `
+    <div class="msg">
+      <div class="who">${escapeHtml(msg.username)}</div>
+      ${replyMsg? `<div class="reply-ref">↩ ${escapeHtml(replyMsg.username)}: ${escapeHtml(replyMsg.text.slice(0,40))}</div>`:''}
+      <div class="body">${escapeHtml(msg.text)}</div>
+      <div class="time">${t} <span data-replybtn="${msg.id}" style="cursor:pointer;color:var(--violet);">پاسخ</span></div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="page-head"><h1>💬 چت SisiHub</h1></div>
+  <div class="card">
+    <div class="chat-box" id="chatBox">${msgs || '<div class="empty">هنوز پیامی نیست. اولین نفر باش!</div>'}</div>
+    ${state.replyTarget!=null ? `
+      <div class="reply-bar">
+        <span>در پاسخ به: ${escapeHtml((state.chat.find(x=>x.id===state.replyTarget)?.text||'').slice(0,40))}</span>
+        <span style="cursor:pointer;color:var(--danger);" id="cancelReply">✕</span>
+      </div>`:''}
+    <div class="row">
+      <input id="chatInput" placeholder="پیامت رو بنویس..." style="flex:1;">
+      <button class="btn" id="sendChat">ارسال</button>
+    </div>
+  </div>`;
+}
+
+/* ===================== GAMES ===================== */
+function renderGames(){
+  const cards = state.games.map(g=>{
+    const players = state.users.filter(u=>u.games.some(x=>x.game===g.name));
+    return `
+    <div class="card">
+      <h2><span class="dot"></span> ${escapeHtml(g.name)} <span class="badge" style="margin-right:auto;">${players.length} نفر</span></h2>
+      ${players.map(u=>{
+        const gg = u.games.find(x=>x.game===g.name);
+        return `<div class="player-card">
+          ${avatarHTML(u)}
+          <div class="player-meta">
+            <div class="player-name">${escapeHtml(u.username)}</div>
+            <div class="player-sub mono">ID: ${escapeHtml(gg.in_game_id)}</div>
+          </div>
+        </div>`;
+      }).join('') || `<div class="empty">هنوز کسی این بازی رو اضافه نکرده.</div>`}
+    </div>`;
+  }).join('');
+  return `<div class="page-head"><h1>🎮 بازی‌ها</h1></div>` + (cards || `<div class="card"><div class="empty">بازی‌ای تعریف نشده.</div></div>`);
+}
+
+/* ===================== GAMERS ===================== */
+function renderGamers(){
+  const tiles = state.users.map(u=>`
+    <div class="gamer-tile">
+      ${avatarHTML(u)}
+      <div class="player-name" style="font-size:13.5px;">${escapeHtml(u.username)}</div>
+      <div class="muted" style="font-size:11px;margin-top:4px;">${escapeHtml((u.bio||'').slice(0,28))||'&nbsp;'}</div>
+    </div>`).join('');
+  return `<div class="page-head"><h1>👥 گیمرها</h1></div><div class="card"><div class="gamers-grid">${tiles}</div></div>`;
+}
+
+/* ===================== Event binding per tab ===================== */
+function bindTabEvents(){
+  const m = me();
+
+  if(state.tab==='home'){
+    document.querySelectorAll('[data-tab]').forEach(b=>{ if(b.dataset.tab){ b.onclick=async ()=>{state.tab=b.dataset.tab; await refreshTabData(); render();}; }});
+    const copyBtn=document.getElementById('copyMeetBtn');
+    if(copyBtn) copyBtn.onclick=async ()=>{
+      const link=normalizeLink(state.meetLink);
+      try{
+        await navigator.clipboard.writeText(link);
+        toast('لینک کپی شد 📋');
+      }catch(e){
+        // fallback: select the text box manually
+        toast('نشد خودکار کپی بشه، لینک زیر رو نگه‌دار و دستی کپی کن');
+      }
+    };
+  }
+
+  if(state.tab==='profile'){
+    document.getElementById('pfPhotoInput').onchange=async (e)=>{
+      const file=e.target.files[0];
+      if(!file) return;
+      try{
+        const dataUrl=await readAndResizeImage(file);
+        await api.updateUser(m.username, {avatar:dataUrl});
+        toast('عکس پروفایل ذخیره شد 📸');
+        state.users=await api.getUsers(); render();
+      }catch(err){ toast('مشکلی توی آپلود عکس پیش اومد'); }
+    };
+    const rmPhotoBtn=document.getElementById('removePhotoBtn');
+    if(rmPhotoBtn) rmPhotoBtn.onclick=async ()=>{
+      await api.updateUser(m.username, {avatar:'🎮'});
+      toast('عکس حذف شد'); state.users=await api.getUsers(); render();
+    };
+    document.getElementById('saveProfile').onclick=async ()=>{
+      const emojiVal=document.getElementById('pfAvatar').value.trim();
+      const fields={
+        age:document.getElementById('pfAge').value.trim(),
+        phone:document.getElementById('pfPhone').value.trim(),
+        bio:document.getElementById('pfBio').value.trim(),
+      };
+      if(!(m.avatar && m.avatar.startsWith('data:image'))){ fields.avatar = emojiVal || '🎮'; }
+      await api.updateUser(m.username, fields);
+      toast('پروفایل ذخیره شد ✅');
+      state.users=await api.getUsers(); render();
+    };
+    document.getElementById('addGameBtn').onclick=async ()=>{
+      const game=document.getElementById('pfGameSelect').value;
+      const id=document.getElementById('pfGameId').value.trim();
+      if(!id){ toast('آیدی داخل بازی رو بنویس'); return; }
+      await api.addUserGame(m.username, game, id);
+      toast('بازی اضافه شد 🎮');
+      state.users=await api.getUsers(); render();
+    };
+    document.querySelectorAll('[data-rmgame]').forEach(b=>{
+      b.onclick=async ()=>{ await api.removeUserGame(+b.dataset.rmgame); state.users=await api.getUsers(); render(); };
+    });
+    document.getElementById('changePassBtn').onclick=async ()=>{
+      const np=document.getElementById('pfNewPass').value;
+      if(!np){ toast('رمز جدید رو بنویس'); return; }
+      await api.updateUser(m.username, {password:np});
+      toast('رمز عوض شد 🔒'); document.getElementById('pfNewPass').value='';
+    };
+  }
+
+  if(state.tab==='admin' && isAdmin()){
+    document.querySelectorAll('[data-resetpw]').forEach(b=>{
+      b.onclick=async ()=>{
+        const uname=b.dataset.resetpw;
+        const np=prompt(`رمز جدید برای ${uname}:`);
+        if(np){ await api.updateUser(uname,{password:np}); toast('رمز ریست شد'); state.users=await api.getUsers(); render(); }
+      };
+    });
+    document.querySelectorAll('[data-deluser]').forEach(b=>{
+      b.onclick=async ()=>{
+        const uname=b.dataset.deluser;
+        if(confirm(`کاربر ${uname} حذف بشه؟`)){
+          await api.deleteUser(uname); toast('کاربر حذف شد'); state.users=await api.getUsers(); render();
+        }
+      };
+    });
+    document.getElementById('publishAnn').onclick=async ()=>{
+      const q=document.getElementById('admAnnText').value.trim();
+      await api.publishAnnouncement(q);
+      state.announcement=await api.getTodayAnnouncement();
+      toast('اطلاعیه منتشر شد 📣'); render();
+    };
+    const delAnnBtn=document.getElementById('deleteAnn');
+    if(delAnnBtn) delAnnBtn.onclick=async ()=>{
+      if(!confirm('اطلاعیه امشب و رأی‌هاش پاک بشه؟')) return;
+      await api.deleteAnnouncement();
+      state.announcement=null;
+      toast('اطلاعیه پاک شد 🗑️'); render();
+    };
+    document.getElementById('saveMeet').onclick=async ()=>{
+      let link=document.getElementById('admMeet').value.trim();
+      if(link && !/^https?:\/\//i.test(link)){ link = 'https://' + link; }
+      await api.setMeetLink(link); state.meetLink=link;
+      document.getElementById('admMeet').value=link;
+      toast('لینک ذخیره شد 🎥');
+    };
+    document.getElementById('addGameAdmin').onclick=async ()=>{
+      const name=document.getElementById('newGameName').value.trim();
+      if(!name){ return; }
+      const ok=await api.addGame(name);
+      if(!ok){ toast('این بازی از قبل هست'); return; }
+      toast('بازی اضافه شد'); state.games=await api.getGames(); render();
+    };
+    document.querySelectorAll('[data-delgame]').forEach(b=>{
+      b.onclick=async ()=>{ await api.deleteGame(+b.dataset.delgame); state.games=await api.getGames(); render(); };
+    });
+  }
+
+  if(state.tab==='announce' && state.announcement){
+    document.getElementById('voteYes').onclick=async ()=>{ await api.vote(m.username,'yes'); state.announcement=await api.getTodayAnnouncement(); render(); };
+    document.getElementById('voteNo').onclick=async ()=>{ await api.vote(m.username,'no'); state.announcement=await api.getTodayAnnouncement(); render(); };
+  }
+
+  if(state.tab==='chat'){
+    const box=document.getElementById('chatBox'); if(box) box.scrollTop=box.scrollHeight;
+    document.querySelectorAll('[data-replybtn]').forEach(b=>{ b.onclick=()=>{ state.replyTarget=+b.dataset.replybtn; render(); }; });
+    const cancel=document.getElementById('cancelReply');
+    if(cancel) cancel.onclick=()=>{ state.replyTarget=null; render(); };
+    const sendBtn=document.getElementById('sendChat');
+    if(sendBtn) sendBtn.onclick=async ()=>{
+      const input=document.getElementById('chatInput');
+      const text=input.value.trim();
+      if(!text) return;
+      await api.sendChat(m.username, text, state.replyTarget);
+      state.replyTarget=null;
+      state.chat=await api.getChat();
+      render();
+    };
+    const inputEl=document.getElementById('chatInput');
+    if(inputEl) inputEl.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('sendChat').click(); });
+  }
+}
+
+/* ===================== utils ===================== */
+function escapeHtml(str){
+  return String(str??'').replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ===================== init ===================== */
+let pollTimer=null;
+(async function init(){
+  applyTheme(getSavedTheme());
+  await render(); // نشون دادن پیام "هنوز وصل نشده" اگه کانفیگ نشده
+  if(!CONFIGURED) return;
+  await loadAll();
+  await render();
+  // هر ۱۰ ثانیه یه بار دیتای تب فعال رو بروزرسانی کن تا بین دوستات همگام بمونه
+  pollTimer=setInterval(async ()=>{
+    if(!state.session) return;
+    if(state.tab==='profile' || state.tab==='admin') return; // این تب‌ها فرم دارن، رفرش خودکار نشن
+    const activeTag = document.activeElement && document.activeElement.tagName;
+    if(activeTag==='INPUT' || activeTag==='TEXTAREA') return; // وسط تایپ کردن رفرش نکن
+    await refreshTabData();
+    render();
+  }, 10000);
+})();
+</script>
+</body>
+</html>
