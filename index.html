@@ -319,10 +319,7 @@ const api = {
   async sendChat(username, text, replyTo){ await sb.from('chat_messages').insert({username, text, reply_to: replyTo}); },
 
   async getMeetLink(){ const {data} = await sb.from('settings').select('*').eq('key','meet_link').maybeSingle(); return data?.value||''; },
-  async setMeetLink(link){ await sb.from('settings').update({value:link}).eq('key','meet_link'); },
-
-  async getAmongUsCode(){ const {data} = await sb.from('settings').select('*').eq('key','amongus_code').maybeSingle(); return data?.value||''; },
-  async setAmongUsCode(code){ await sb.from('settings').upsert({key:'amongus_code', value:code}, {onConflict:'key'}); }
+  async setMeetLink(link){ await sb.from('settings').update({value:link}).eq('key','meet_link'); }
 };
 
 /* ===================== avatar rendering ===================== */
@@ -357,7 +354,7 @@ function readAndResizeImage(file){
 }
 
 /* ===================== State ===================== */
-let state = { session:null, users:[], announcement:null, games:[], chat:[], meetLink:'', amongUsCode:'', tab:'home', replyTarget:null, loaded:false, moreMenuOpen:false, viewingUser:null };
+let state = { session:null, users:[], announcement:null, games:[], chat:[], meetLink:'', tab:'home', replyTarget:null, loaded:false, moreMenuOpen:false, viewingUser:null };
 
 async function loadAll(){
   state.users = await api.getUsers();
@@ -365,7 +362,6 @@ async function loadAll(){
   state.games = await api.getGames();
   state.chat = await api.getChat();
   state.meetLink = await api.getMeetLink();
-  state.amongUsCode = await api.getAmongUsCode();
   const sess = sessionStorage.getItem('sisihub_session'); // فقط برای بین رفرش‌های همین دستگاه
   if(sess){
     const u = state.users.find(x=>x.username===sess);
@@ -578,7 +574,6 @@ function bindShell(){
 
 async function refreshTabData(){
   if(state.tab==='home' || state.tab==='announce'){ state.announcement=await api.getTodayAnnouncement(); state.meetLink=await api.getMeetLink(); }
-  if(state.tab==='home' || state.tab==='admin'){ state.amongUsCode=await api.getAmongUsCode(); }
   if(state.tab==='home' || state.tab==='chat'){ state.chat=await api.getChat(); }
   if(state.tab==='home' || state.tab==='gamers' || state.tab==='games' || state.tab==='admin' || state.tab==='profile'){ state.users=await api.getUsers(); state.games=await api.getGames(); }
 }
@@ -610,16 +605,6 @@ function renderHome(){
       </div>
       <div class="mono" style="font-size:12.5px;color:var(--muted);user-select:all;word-break:break-all;padding:8px 10px;background:var(--surface-2);border-radius:8px;">${escapeHtml(normalizeLink(state.meetLink))}</div>
       <p class="muted" style="margin-top:8px;font-size:11.5px;">اگه دکمه بالا کار نکرد، همین لینک زیرو نگه‌دار و کپی کن، بعد توی مرورگر پیستش کن.</p>
-    </div>` : '' }
-
-    ${ state.amongUsCode ? `
-    <div class="card">
-      <h2><span class="dot" style="background:var(--amber);box-shadow:0 0 10px var(--amber);"></span> کد روم Among Us 🚀</h2>
-      <div class="row" style="align-items:center;">
-        <div class="mono" style="font-size:17px;letter-spacing:3px;background:var(--surface-2);padding:10px 16px;border-radius:8px;flex:1;text-align:center;">${escapeHtml(state.amongUsCode)}</div>
-        <button class="btn ghost sm" id="copyAmongBtn">📋 کپی</button>
-      </div>
-      <p class="muted" style="margin-top:8px;font-size:11.5px;">کد رو کپی کن، Among Us رو باز کن و توی Join Game پیستش کن.</p>
     </div>` : '' }
 
     <div class="card">
@@ -769,12 +754,6 @@ function renderAdmin(){
   </div>
 
   <div class="card">
-    <h2><span class="dot"></span> کد روم Among Us</h2>
-    <input id="admAmongCode" value="${escapeAttr(state.amongUsCode||'')}" placeholder="مثلاً ABCDE">
-    <button class="btn ghost" id="saveAmongCode">ذخیره کد</button>
-  </div>
-
-  <div class="card">
     <h2><span class="dot"></span> لیست بازی‌ها</h2>
     ${gameRows}
     <hr>
@@ -879,11 +858,6 @@ function bindTabEvents(){
 
   if(state.tab==='home'){
     document.querySelectorAll('[data-tab]').forEach(b=>{ if(b.dataset.tab){ b.onclick=async ()=>{state.tab=b.dataset.tab; await refreshTabData(); render();}; }});
-    const copyAmongBtn=document.getElementById('copyAmongBtn');
-    if(copyAmongBtn) copyAmongBtn.onclick=async ()=>{
-      try{ await navigator.clipboard.writeText(state.amongUsCode); toast('کد کپی شد 📋'); }
-      catch(e){ toast('نشد کپی بشه، دستی کپی کن'); }
-    };
     const copyBtn=document.getElementById('copyMeetBtn');
     if(copyBtn) copyBtn.onclick=async ()=>{
       const link=normalizeLink(state.meetLink);
@@ -994,12 +968,6 @@ function bindTabEvents(){
       await api.setMeetLink(link); state.meetLink=link;
       document.getElementById('admMeet').value=link;
       toast('لینک ذخیره شد 🎥');
-    };
-    document.getElementById('saveAmongCode').onclick=async ()=>{
-      const code=document.getElementById('admAmongCode').value.trim().toUpperCase();
-      await api.setAmongUsCode(code); state.amongUsCode=code;
-      document.getElementById('admAmongCode').value=code;
-      toast('کد روم ذخیره شد 🚀');
     };
     document.getElementById('addGameAdmin').onclick=async ()=>{
       const name=document.getElementById('newGameName').value.trim();
