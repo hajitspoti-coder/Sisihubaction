@@ -271,6 +271,22 @@ const api = {
   async createUser(u){ const {error}=await sb.from('users').insert(u); return !error; },
   async updateUser(username, fields){ await sb.from('users').update(fields).eq('username', username); },
   async deleteUser(username){ await sb.from('users').delete().eq('username', username); },
+  async renameUser(oldUsername, newUsername){
+    const {error} = await sb.from('users').update({username:newUsername}).eq('username', oldUsername);
+    if(error) return {ok:false, error};
+    await sb.from('user_games').update({username:newUsername}).eq('username', oldUsername);
+    await sb.from('chat_messages').update({username:newUsername}).eq('username', oldUsername);
+    const {data:anns} = await sb.from('announcements').select('*');
+    for(const a of (anns||[])){
+      if(a.responses && Object.prototype.hasOwnProperty.call(a.responses, oldUsername)){
+        const newResponses = {...a.responses};
+        newResponses[newUsername] = newResponses[oldUsername];
+        delete newResponses[oldUsername];
+        await sb.from('announcements').update({responses:newResponses}).eq('date', a.date);
+      }
+    }
+    return {ok:true};
+  },
 
   async addUserGame(username, game, inGameId){
     await sb.from('user_games').delete().eq('username', username).eq('game', game);
@@ -303,7 +319,10 @@ const api = {
   async sendChat(username, text, replyTo){ await sb.from('chat_messages').insert({username, text, reply_to: replyTo}); },
 
   async getMeetLink(){ const {data} = await sb.from('settings').select('*').eq('key','meet_link').maybeSingle(); return data?.value||''; },
-  async setMeetLink(link){ await sb.from('settings').update({value:link}).eq('key','meet_link'); }
+  async setMeetLink(link){ await sb.from('settings').update({value:link}).eq('key','meet_link'); },
+
+  async getAmongUsCode(){ const {data} = await sb.from('settings').select('*').eq('key','amongus_code').maybeSingle(); return data?.value||''; },
+  async setAmongUsCode(code){ await sb.from('settings').upsert({key:'amongus_code', value:code}, {onConflict:'key'}); }
 };
 
 /* ===================== avatar rendering ===================== */
@@ -338,7 +357,7 @@ function readAndResizeImage(file){
 }
 
 /* ===================== State ===================== */
-let state = { session:null, users:[], announcement:null, games:[], chat:[], meetLink:'', tab:'home', replyTarget:null, loaded:false, moreMenuOpen:false };
+let state = { session:null, users:[], announcement:null, games:[], chat:[], meetLink:'', amongUsCode:'', tab:'home', replyTarget:null, loaded:false, moreMenuOpen:false, viewingUser:null };
 
 async function loadAll(){
   state.users = await api.getUsers();
@@ -346,6 +365,7 @@ async function loadAll(){
   state.games = await api.getGames();
   state.chat = await api.getChat();
   state.meetLink = await api.getMeetLink();
+  state.amongUsCode = await api.getAmongUsCode();
   const sess = sessionStorage.getItem('sisihub_session'); // فقط برای بین رفرش‌های همین دستگاه
   if(sess){
     const u = state.users.find(x=>x.username===sess);
@@ -476,7 +496,43 @@ function renderShell(){
       <button class="menu-item danger" id="menuLogout"><span class="ic">🚪</span>خروج از حساب</button>
     </div>
   </div>` : ''}
+  ${renderProfileModal()}
   `;
+}
+
+/* ===================== VIEW PROFILE MODAL ===================== */
+function renderProfileModal(){
+  if(!state.viewingUser) return '';
+  const u = state.users.find(x=>x.username===state.viewingUser);
+  if(!u){ return ''; }
+  const gamesRows = (u.games||[]).map(g=>`
+    <div class="player-card">
+      <div class="avatar">🕹️</div>
+      <div class="player-meta">
+        <div class="player-name">${escapeHtml(g.game)}</div>
+        <div class="player-sub mono">ID: ${escapeHtml(g.in_game_id)}</div>
+      </div>
+    </div>`).join('') || `<div class="empty">بازی‌ای ثبت نکرده.</div>`;
+  return `
+  <div class="menu-overlay" id="profileOverlay">
+    <div class="menu-sheet" style="max-height:85vh;overflow-y:auto;">
+      <div class="handle"></div>
+      <div style="text-align:center;">
+        ${avatarHTML(u,'width:76px;height:76px;font-size:34px;margin:0 auto 10px;')}
+        <div class="player-name" style="font-size:18px;">${escapeHtml(u.username)} ${u.is_admin?'<span class="badge admin">ادمین</span>':''}</div>
+        <div class="muted" style="margin-top:4px;font-size:12.5px;">
+          ${u.age?`سن ${escapeHtml(u.age)}`:''}${u.age&&u.phone?' · ':''}${u.phone?escapeHtml(u.phone):''}
+        </div>
+      </div>
+      <div style="text-align:right;margin-top:16px;">
+        <label>بیو</label>
+        <div class="card" style="margin-bottom:12px;">${escapeHtml(u.bio||'')||'<span class="muted">بیویی ثبت نشده</span>'}</div>
+        <label>بازی‌ها</label>
+        ${gamesRows}
+      </div>
+      <button class="btn ghost" id="closeProfileModal" style="margin-top:14px;width:100%;">بستن</button>
+    </div>
+  </div>`;
 }
 
 function renderTab(){
@@ -509,11 +565,20 @@ function bindShell(){
   });
   const menuLogout=document.getElementById('menuLogout');
   if(menuLogout) menuLogout.onclick=()=>{ state.session=null; sessionStorage.removeItem('sisihub_session'); render(); };
+  document.querySelectorAll('[data-viewuser]').forEach(el=>{
+    el.style.cursor='pointer';
+    el.onclick=()=>{ state.viewingUser=el.dataset.viewuser; render(); };
+  });
+  const profileOverlay=document.getElementById('profileOverlay');
+  if(profileOverlay) profileOverlay.addEventListener('click', (e)=>{ if(e.target.id==='profileOverlay'){ state.viewingUser=null; render(); } });
+  const closeProfileBtn=document.getElementById('closeProfileModal');
+  if(closeProfileBtn) closeProfileBtn.onclick=()=>{ state.viewingUser=null; render(); };
   bindTabEvents();
 }
 
 async function refreshTabData(){
   if(state.tab==='home' || state.tab==='announce'){ state.announcement=await api.getTodayAnnouncement(); state.meetLink=await api.getMeetLink(); }
+  if(state.tab==='home' || state.tab==='admin'){ state.amongUsCode=await api.getAmongUsCode(); }
   if(state.tab==='home' || state.tab==='chat'){ state.chat=await api.getChat(); }
   if(state.tab==='home' || state.tab==='gamers' || state.tab==='games' || state.tab==='admin' || state.tab==='profile'){ state.users=await api.getUsers(); state.games=await api.getGames(); }
 }
@@ -547,6 +612,16 @@ function renderHome(){
       <p class="muted" style="margin-top:8px;font-size:11.5px;">اگه دکمه بالا کار نکرد، همین لینک زیرو نگه‌دار و کپی کن، بعد توی مرورگر پیستش کن.</p>
     </div>` : '' }
 
+    ${ state.amongUsCode ? `
+    <div class="card">
+      <h2><span class="dot" style="background:var(--amber);box-shadow:0 0 10px var(--amber);"></span> کد روم Among Us 🚀</h2>
+      <div class="row" style="align-items:center;">
+        <div class="mono" style="font-size:17px;letter-spacing:3px;background:var(--surface-2);padding:10px 16px;border-radius:8px;flex:1;text-align:center;">${escapeHtml(state.amongUsCode)}</div>
+        <button class="btn ghost sm" id="copyAmongBtn">📋 کپی</button>
+      </div>
+      <p class="muted" style="margin-top:8px;font-size:11.5px;">کد رو کپی کن، Among Us رو باز کن و توی Join Game پیستش کن.</p>
+    </div>` : '' }
+
     <div class="card">
       <h2><span class="dot"></span> امشب چطوره؟</h2>
       ${ann ? `
@@ -573,7 +648,7 @@ function renderHome(){
       <h2><span class="dot"></span> گیمرها</h2>
       <div class="gamers-grid">
         ${previewGamers.map(u=>`
-          <div class="gamer-tile">
+          <div class="gamer-tile" data-viewuser="${escapeAttr(u.username)}">
             ${avatarHTML(u)}
             <div class="player-name" style="font-size:13px;">${escapeHtml(u.username)}</div>
           </div>`).join('') || `<div class="empty">هنوز کسی نیست.</div>`}
@@ -638,6 +713,13 @@ function renderProfile(){
   </div>
 
   <div class="card">
+    <h2><span class="dot"></span> تغییر نام کاربری</h2>
+    <p class="muted" style="margin-bottom:10px;">با تغییر نام کاربری، پیام‌ها و بازی‌های قبلیت هم زیر نام جدید دیده میشن.</p>
+    <input id="pfNewUsername" placeholder="نام کاربری جدید" value="">
+    <button class="btn ghost" id="changeUsernameBtn">تغییر نام کاربری</button>
+  </div>
+
+  <div class="card">
     <h2><span class="dot"></span> تغییر رمز عبور</h2>
     <input id="pfNewPass" type="password" placeholder="رمز جدید">
     <button class="btn ghost" id="changePassBtn">تغییر رمز</button>
@@ -684,6 +766,12 @@ function renderAdmin(){
     <h2><span class="dot"></span> لینک Google Meet</h2>
     <input id="admMeet" value="${escapeAttr(state.meetLink||'')}" placeholder="https://meet.google.com/xxx-xxxx-xxx">
     <button class="btn ghost" id="saveMeet">ذخیره لینک</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span> کد روم Among Us</h2>
+    <input id="admAmongCode" value="${escapeAttr(state.amongUsCode||'')}" placeholder="مثلاً ABCDE">
+    <button class="btn ghost" id="saveAmongCode">ذخیره کد</button>
   </div>
 
   <div class="card">
@@ -761,7 +849,7 @@ function renderGames(){
       <h2><span class="dot"></span> ${escapeHtml(g.name)} <span class="badge" style="margin-right:auto;">${players.length} نفر</span></h2>
       ${players.map(u=>{
         const gg = u.games.find(x=>x.game===g.name);
-        return `<div class="player-card">
+        return `<div class="player-card" data-viewuser="${escapeAttr(u.username)}">
           ${avatarHTML(u)}
           <div class="player-meta">
             <div class="player-name">${escapeHtml(u.username)}</div>
@@ -777,7 +865,7 @@ function renderGames(){
 /* ===================== GAMERS ===================== */
 function renderGamers(){
   const tiles = state.users.map(u=>`
-    <div class="gamer-tile">
+    <div class="gamer-tile" data-viewuser="${escapeAttr(u.username)}">
       ${avatarHTML(u)}
       <div class="player-name" style="font-size:13.5px;">${escapeHtml(u.username)}</div>
       <div class="muted" style="font-size:11px;margin-top:4px;">${escapeHtml((u.bio||'').slice(0,28))||'&nbsp;'}</div>
@@ -791,6 +879,11 @@ function bindTabEvents(){
 
   if(state.tab==='home'){
     document.querySelectorAll('[data-tab]').forEach(b=>{ if(b.dataset.tab){ b.onclick=async ()=>{state.tab=b.dataset.tab; await refreshTabData(); render();}; }});
+    const copyAmongBtn=document.getElementById('copyAmongBtn');
+    if(copyAmongBtn) copyAmongBtn.onclick=async ()=>{
+      try{ await navigator.clipboard.writeText(state.amongUsCode); toast('کد کپی شد 📋'); }
+      catch(e){ toast('نشد کپی بشه، دستی کپی کن'); }
+    };
     const copyBtn=document.getElementById('copyMeetBtn');
     if(copyBtn) copyBtn.onclick=async ()=>{
       const link=normalizeLink(state.meetLink);
@@ -849,6 +942,21 @@ function bindTabEvents(){
       await api.updateUser(m.username, {password:np});
       toast('رمز عوض شد 🔒'); document.getElementById('pfNewPass').value='';
     };
+    document.getElementById('changeUsernameBtn').onclick=async ()=>{
+      const btn=document.getElementById('changeUsernameBtn');
+      const newU=document.getElementById('pfNewUsername').value.trim();
+      if(!newU){ toast('نام کاربری جدید رو بنویس'); return; }
+      if(newU===m.username){ toast('این که همون نام فعلیته'); return; }
+      const exists=await api.findUser(newU);
+      if(exists){ toast('این نام کاربری قبلاً گرفته شده'); return; }
+      btn.disabled=true; btn.textContent='در حال تغییر...';
+      const res=await api.renameUser(m.username, newU);
+      if(!res.ok){ toast('مشکلی پیش اومد، دوباره امتحان کن'); btn.disabled=false; btn.textContent='تغییر نام کاربری'; return; }
+      sessionStorage.setItem('sisihub_session', newU);
+      state.session=newU;
+      toast('نام کاربری عوض شد ✅');
+      await loadAll(); render();
+    };
   }
 
   if(state.tab==='admin' && isAdmin()){
@@ -886,6 +994,12 @@ function bindTabEvents(){
       await api.setMeetLink(link); state.meetLink=link;
       document.getElementById('admMeet').value=link;
       toast('لینک ذخیره شد 🎥');
+    };
+    document.getElementById('saveAmongCode').onclick=async ()=>{
+      const code=document.getElementById('admAmongCode').value.trim().toUpperCase();
+      await api.setAmongUsCode(code); state.amongUsCode=code;
+      document.getElementById('admAmongCode').value=code;
+      toast('کد روم ذخیره شد 🚀');
     };
     document.getElementById('addGameAdmin').onclick=async ()=>{
       const name=document.getElementById('newGameName').value.trim();
