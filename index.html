@@ -194,9 +194,48 @@ body.theme-light .brand-name{background:linear-gradient(90deg,#171826,var(--viol
 .menu-item:active{background:var(--surface-2);}
 .menu-item .ic{font-size:19px;}
 .menu-item.danger{color:var(--danger);}
+
+/* ---- Among Us style walking animation (decorative) ---- */
+.amongus-strip{
+  position:fixed;left:0;right:0;bottom:58px;height:38px;
+  pointer-events:none;overflow:hidden;z-index:2;opacity:.6;
+}
+body.theme-light .amongus-strip{opacity:.45;}
+.crewmate{position:absolute;bottom:2px;width:22px;height:30px;left:-30px;
+  animation-name:cm-walk;animation-timing-function:linear;animation-iteration-count:infinite;}
+.crewmate .body{
+  position:relative;width:100%;height:100%;background:var(--cm-color,var(--violet));
+  border-radius:50% 50% 42% 42% / 62% 62% 38% 38%;
+  box-shadow:inset -3px -2px 0 rgba(0,0,0,.2), inset 2px 2px 0 rgba(255,255,255,.1);
+  animation:cm-bounce .5s ease-in-out infinite alternate;
+}
+.crewmate .visor{
+  position:absolute;top:5px;left:52%;width:13px;height:9px;
+  background:linear-gradient(135deg,#eafbff,#8fd8f5);border-radius:50% 50% 45% 45%;
+  box-shadow:0 0 3px rgba(255,255,255,.7);
+}
+.crewmate .backpack{
+  position:absolute;top:9px;right:-3px;width:6px;height:12px;
+  background:var(--cm-color,var(--violet));filter:brightness(.7);border-radius:3px 2px 2px 3px;
+}
+.crewmate .leg{position:absolute;bottom:-3px;width:6px;height:8px;
+  background:var(--cm-color,var(--violet));filter:brightness(.65);border-radius:0 0 3px 3px;}
+.crewmate .leg.l{left:2px;} .crewmate .leg.r{right:2px;}
+.crewmate.c1{--cm-color:var(--violet);animation-duration:16s;animation-delay:0s;}
+.crewmate.c2{--cm-color:var(--cyan);animation-duration:21s;animation-delay:5s;}
+.crewmate.c3{--cm-color:var(--amber);animation-duration:26s;animation-delay:11s;}
+@keyframes cm-bounce{ from{transform:translateY(0);} to{transform:translateY(-2px);} }
+@keyframes cm-walk{ from{left:-30px;} to{left:calc(100% + 30px);} }
+@media (prefers-reduced-motion: reduce){ .crewmate{animation:none!important;} }
 </style>
 </head>
 <body>
+
+<div class="amongus-strip" aria-hidden="true">
+  <div class="crewmate c1"><div class="body"><div class="visor"></div></div><div class="leg l"></div><div class="leg r"></div><div class="backpack"></div></div>
+  <div class="crewmate c2"><div class="body"><div class="visor"></div></div><div class="leg l"></div><div class="leg r"></div><div class="backpack"></div></div>
+  <div class="crewmate c3"><div class="body"><div class="visor"></div></div><div class="leg l"></div><div class="leg r"></div><div class="backpack"></div></div>
+</div>
 
 <div id="app"></div>
 <div class="toast" id="toast"></div>
@@ -587,6 +626,7 @@ function normalizeLink(link){
 function renderHome(){
   const ann = state.announcement;
   const yesCount = ann ? Object.values(ann.responses||{}).filter(v=>v==='yes').length : 0;
+  const noCount = ann ? Object.values(ann.responses||{}).filter(v=>v==='no').length : 0;
   const recentChat = state.chat.slice(-3);
   const previewGamers = state.users.slice(0,8);
   return `
@@ -612,6 +652,7 @@ function renderHome(){
       ${ann ? `
         <div style="font-size:15px;margin-bottom:10px;">${escapeHtml(ann.question)}</div>
         <span class="badge">${yesCount} نفر هستن</span>
+        <span class="badge" style="margin-right:6px;background:rgba(239,68,68,.12);color:var(--danger);border-color:rgba(239,68,68,.3);">${noCount} نفر نیستن</span>
       `: `<div class="empty">هنوز اطلاعیه‌ای برای امشب ثبت نشده.</div>`}
       <div style="margin-top:12px;"><button class="btn ghost sm" data-tab="announce">رفتن به نظرسنجی ←</button></div>
     </div>
@@ -779,6 +820,7 @@ function renderAnnounce(){
   }
   const myResp = ann.responses?.[m.username];
   const yesUsers = Object.entries(ann.responses||{}).filter(([k,v])=>v==='yes').map(([k])=>k);
+  const noUsers = Object.entries(ann.responses||{}).filter(([k,v])=>v==='no').map(([k])=>k);
   return `
   <div class="page-head"><h1>📣 نظرسنجی شب</h1><p>${jalaliToday()}</p></div>
   <div class="card">
@@ -791,6 +833,11 @@ function renderAnnounce(){
     <div class="muted" style="margin-bottom:6px;">کسایی که هستن (${yesUsers.length} نفر):</div>
     <div class="poll-yes-list">
       ${yesUsers.map(u=>`<div class="poll-chip">🟢 ${escapeHtml(u)}</div>`).join('') || '<span class="muted">هنوز کسی رأی نداده</span>'}
+    </div>
+    <hr>
+    <div class="muted" style="margin-bottom:6px;">کسایی که نیستن (${noUsers.length} نفر):</div>
+    <div class="poll-yes-list">
+      ${noUsers.map(u=>`<div class="poll-chip" style="border-color:rgba(239,68,68,.4);color:var(--danger);">🔴 ${escapeHtml(u)}</div>`).join('') || '<span class="muted">هنوز کسی رأی نداده</span>'}
     </div>
   </div>`;
 }
