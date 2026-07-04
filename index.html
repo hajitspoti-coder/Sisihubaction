@@ -656,7 +656,8 @@ function renderProfile(){
       <button class="btn danger sm" data-rmgame="${g.id}">حذف</button>
     </div>`).join('') || `<div class="empty">هنوز بازی‌ای اضافه نکردی.</div>`;
 
-  const gameOptions = state.games.map(g=>`<option value="${escapeAttr(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+  const gameOptions = state.games.map(g=>`<option value="${escapeAttr(g.name)}">${escapeHtml(g.name)}</option>`).join('')
+    + `<option value="__custom__">➕ بازی جدید (خودم می‌نویسم)</option>`;
 
   return `
   <div class="page-head"><h1>🙍 پروفایل من</h1><p>مشخصات و بازی‌هات رو اینجا مدیریت کن</p></div>
@@ -693,6 +694,10 @@ function renderProfile(){
     <div class="grid2">
       <div><label>انتخاب بازی</label><select id="pfGameSelect">${gameOptions}</select></div>
       <div><label>آیدی داخل بازی</label><input id="pfGameId" placeholder="مثلاً YourTag#1234"></div>
+    </div>
+    <div id="pfCustomGameWrap" style="display:none;">
+      <label>اسم بازی جدید</label>
+      <input id="pfCustomGameName" placeholder="مثلاً Call of Duty">
     </div>
     <button class="btn ghost" id="addGameBtn">+ اضافه کردن بازی</button>
   </div>
@@ -899,10 +904,22 @@ function bindTabEvents(){
       toast('پروفایل ذخیره شد ✅');
       state.users=await api.getUsers(); render();
     };
+    const gameSelectEl=document.getElementById('pfGameSelect');
+    const customGameWrap=document.getElementById('pfCustomGameWrap');
+    if(gameSelectEl) gameSelectEl.onchange=()=>{
+      customGameWrap.style.display = gameSelectEl.value==='__custom__' ? 'block' : 'none';
+    };
     document.getElementById('addGameBtn').onclick=async ()=>{
-      const game=document.getElementById('pfGameSelect').value;
+      let game=document.getElementById('pfGameSelect').value;
       const id=document.getElementById('pfGameId').value.trim();
       if(!id){ toast('آیدی داخل بازی رو بنویس'); return; }
+      if(game==='__custom__'){
+        const customName=document.getElementById('pfCustomGameName').value.trim();
+        if(!customName){ toast('اسم بازی جدید رو بنویس'); return; }
+        game=customName;
+        const alreadyExists=state.games.some(g=>g.name.toLowerCase()===game.toLowerCase());
+        if(!alreadyExists){ await api.addGame(game); state.games=await api.getGames(); }
+      }
       await api.addUserGame(m.username, game, id);
       toast('بازی اضافه شد 🎮');
       state.users=await api.getUsers(); render();
